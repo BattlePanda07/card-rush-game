@@ -24,7 +24,7 @@ function getPublicState(room) {
       Object.entries(room.players).map(([id, p]) => [
         id,
         {
-          handCount: p.hand.length,
+          hand: id === currentPlayer(room) ? p.hand : p.hand.map(() => "hidden"),
           bank: p.bank,
           properties: p.properties,
           actionsLeft: p.actionsLeft
