@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Card Deal Game</title>
+  <style>
+    body { font-family: Arial; }
+    .card {
+      display:inline-block;
+      padding:10px;
+      margin:5px;
+      border:1px solid black;
+      cursor:pointer;
+    }
+    .hand { margin-top:20px; }
+  </style>
+</head>
+<body>
+
+<h2>Card Deal Game</h2>
+
+<button onclick="createRoom()">Create</button>
+<input id="code" placeholder="Join code"/>
+<button onclick="joinRoom()">Join</button>
+
+<h3 id="room"></h3>
+<div id="game"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="client.js"></script>
+</body>
+</html>
