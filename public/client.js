@@ -6,7 +6,7 @@ let selectedTarget = null;
 function createRoom() {
   socket.emit("createRoom", (code) => {
     room = code;
-    document.getElementById("room").innerText = code;
+    document.getElementById("room").innerText = "Room: " + code;
     document.getElementById("lobby").style.display = "none";
   });
 }
@@ -18,7 +18,7 @@ function joinRoom() {
     if (res.error) return alert(res.error);
 
     room = code;
-    document.getElementById("room").innerText = code;
+    document.getElementById("room").innerText = "Room: " + code;
     document.getElementById("lobby").style.display = "none";
   });
 }
@@ -39,20 +39,18 @@ socket.on("state", (state) => {
   const me = state.players[socket.id];
   if (!me) return;
 
-  let html = "";
-
-  // TURN INFO
   const myTurn = state.turnOrder[state.turnIndex] === socket.id;
 
-  html += `
+  let html = `
     <div class="panel">
       <b>${myTurn ? "🔥 YOUR TURN" : "⏳ Waiting..."}</b><br>
-      Actions Left: ${me.actionsLeft}
+      Actions: ${me.actionsLeft}
+      <button onclick="endTurn()" style="float:right;">End Turn</button>
     </div>
-  `;
 
-  // PLAYERS LIST
-  html += `<div class="panel"><b>Players</b><br>`;
+    <div class="panel">
+      <b>Players</b><br>
+  `;
 
   state.turnOrder.forEach(id => {
     const p = state.players[id];
@@ -67,22 +65,50 @@ socket.on("state", (state) => {
 
   html += `</div>`;
 
-  // HAND
-  const hand = document.createElement("div");
-  hand.className = "hand";
+  html += `
+    <div class="panel">
+      <b>Select Target:</b><br>
+  `;
 
-  me.handCount = me.handCount || 0;
+  state.turnOrder.forEach(id => {
+    if (id !== socket.id) {
+      html += `<button onclick="selectedTarget='${id}'">Target</button>`;
+    }
+  });
 
-  for (let i = 0; i < me.handCount; i++) {
-    const card = document.createElement("div");
-    card.className = "card";
-    card.innerText = "Card";
-    card.onclick = () => playCard(i);
-
-    hand.appendChild(card);
-  }
+  html += `</div>`;
 
   const board = document.getElementById("board");
   board.innerHTML = html;
+
+  // HAND RENDER (REAL CARDS)
+  const hand = document.createElement("div");
+  hand.className = "hand";
+
+  me.hand.forEach((card, i) => {
+    const el = document.createElement("div");
+    el.className = "card";
+
+    let label = "";
+
+    if (card.type === "money") {
+      label = `💰 $${card.value}`;
+    }
+
+    if (card.type === "property") {
+      label = `🏠 ${card.color}`;
+    }
+
+    if (card.type === "action") {
+      label = `⚡ ${card.name}`;
+    }
+
+    el.innerHTML = label;
+
+    el.onclick = () => playCard(i);
+
+    hand.appendChild(el);
+  });
+
   board.appendChild(hand);
 });
