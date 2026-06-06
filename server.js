@@ -22,6 +22,28 @@ const rooms = {};
 // 	}
 // }
 
+function getPlayerState(room, viewerId) {
+  return {
+    turnIndex: room.turnIndex,
+    turnOrder: room.turnOrder,
+    deckCount: room.deck.length,
+
+    players: Object.fromEntries(
+      Object.entries(room.players).map(([id, p]) => [
+        id,
+        {
+          hand: id === viewerId
+            ? p.hand
+            : p.hand.map(() => "hidden"),
+
+          bank: p.bank,
+          properties: p.properties,
+          actionsLeft: p.actionsLeft
+        }
+      ])
+    )
+  };
+}
 
 function currentPlayer(room) {
   return room.turnOrder[room.turnIndex];
