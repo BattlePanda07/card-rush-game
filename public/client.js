@@ -57,8 +57,8 @@ socket.on("state", (state) => {
     html += `
       <div style="margin:6px 0;">
         👤 ${id === socket.id ? "YOU" : "OPPONENT"} <br>
-    💰 Bank: $${p.bank.reduce((sum, c) => sum + (c.value || 0), 0)}cards <br>
-        🏠 Properties: ${JSON.stringify(p.properties)}
+        💰 Bank: $${p.bank.reduce((sum, c) => sum + (c.value || 0), 0)} cards <br>
+        🏠 Properties: ${JSON.stringify(p.properties, null, " | ")}
       </div>
     `;
   });
