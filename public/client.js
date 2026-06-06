@@ -36,45 +36,53 @@ function endTurn() {
 }
 
 socket.on("state", (state) => {
-  const player = state.players[socket.id];
-  if (!player) return;
+  const me = state.players[socket.id];
+  if (!me) return;
 
-  let html = `
+  let html = "";
+
+  // TURN INFO
+  const myTurn = state.turnOrder[state.turnIndex] === socket.id;
+
+  html += `
     <div class="panel">
-      <b>🎯 Actions:</b> ${player.actionsLeft}
-      <button class="btn" style="float:right;" onclick="endTurn()">End Turn</button>
+      <b>${myTurn ? "🔥 YOUR TURN" : "⏳ Waiting..."}</b><br>
+      Actions Left: ${me.actionsLeft}
     </div>
-
-    <div class="panel">
-      <b>🎯 Select Target</b><br>
   `;
 
+  // PLAYERS LIST
+  html += `<div class="panel"><b>Players</b><br>`;
+
   state.turnOrder.forEach(id => {
-    if (id !== socket.id) {
-      html += `<button class="btn" onclick="selectedTarget='${id}'">Player</button>`;
-    }
+    const p = state.players[id];
+    html += `
+      <div style="margin:6px 0;">
+        👤 ${id === socket.id ? "YOU" : "OPPONENT"} <br>
+        💰 Bank: ${p.bank.length} cards <br>
+        🏠 Properties: ${JSON.stringify(p.properties)}
+      </div>
+    `;
   });
 
   html += `</div>`;
 
-  document.getElementById("board").innerHTML = html;
-
+  // HAND
   const hand = document.createElement("div");
   hand.className = "hand";
 
-  player.hand.forEach((card, i) => {
-    const el = document.createElement("div");
-    el.className = "card";
+  me.handCount = me.handCount || 0;
 
-    el.innerHTML = `
-      <b>${card.type}</b><br>
-      ${card.name || card.color || card.value}
-    `;
+  for (let i = 0; i < me.handCount; i++) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerText = "Card";
+    card.onclick = () => playCard(i);
 
-    el.onclick = () => playCard(i);
+    hand.appendChild(card);
+  }
 
-    hand.appendChild(el);
-  });
-
-  document.getElementById("board").appendChild(hand);
+  const board = document.getElementById("board");
+  board.innerHTML = html;
+  board.appendChild(hand);
 });

@@ -10,6 +10,29 @@ app.use(express.static("public"));
 const rooms = {};
 
 // ---------- GAME SETUP ----------
+
+function currentPlayer(room) {
+  return room.turnOrder[room.turnIndex];
+}
+function getPublicState(room) {
+  return {
+    turnIndex: room.turnIndex,
+    turnOrder: room.turnOrder,
+    deckCount: room.deck.length,
+
+    players: Object.fromEntries(
+      Object.entries(room.players).map(([id, p]) => [
+        id,
+        {
+          handCount: p.hand.length,
+          bank: p.bank,
+          properties: p.properties,
+          actionsLeft: p.actionsLeft
+        }
+      ])
+    )
+  };
+}
 function createDeck() {
   const deck = [];
 
@@ -93,7 +116,7 @@ io.on("connection", (socket) => {
     socket.join(code);
     cb({ ok: true });
 
-    io.to(code).emit("state", room);
+    io.to(code).emit("state", getPublicState(room));
   });
 
   socket.on("playCard", ({ code, index, targetId }) => {
@@ -103,7 +126,8 @@ io.on("connection", (socket) => {
     if (!room || !player) return;
 
     if (player.actionsLeft <= 0) return;
-
+	
+    if (socket.id !== currentPlayer(room)) return;
     const card = player.hand.splice(index, 1)[0];
     player.actionsLeft--;
 
@@ -171,15 +195,21 @@ io.on("connection", (socket) => {
       }
     }
 
-    io.to(code).emit("state", room);
+    io.to(code).emit("state", getPublicState(room));
   });
 
   socket.on("endTurn", (code) => {
     const room = rooms[code];
     if (!room) return;
 
-    nextTurn(room);
-    io.to(code).emit("state", room);
+    room.turnIndex = (room.turnIndex + 1) % room.turnOrder.length;
+
+    const next = currentPlayer(room);
+    room.players[next].actionsLeft = 3;
+
+    draw(room, next);
+
+    io.to(code).emit("state", getPublicState(room));
   });
 });
 
