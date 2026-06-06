@@ -11,6 +11,18 @@ const rooms = {};
 
 // ---------- GAME SETUP ----------
 
+// // Kyen's Card Class attempt
+// class Card {
+// 	constructor(type, name, color=null, setAmount=null, value=null) {
+// 		this.type = type;
+// 		this.name = name;
+// 		this.color = color;
+// 		this.setAmount = setAmount;
+// 		this.value = value;
+// 	}
+// }
+
+
 function currentPlayer(room) {
   return room.turnOrder[room.turnIndex];
 }
@@ -33,28 +45,52 @@ function getPublicState(room) {
     )
   };
 }
+
+function resetDeck(deck, discard) {
+	deck = discard;
+	discard.length = 0;
+	return shuffleDeck(deck);
+}
+
+function shuffleDeck(deck) {	// Put all cards from discard into deck before calling 
+	return deck.sort(() => Math.random() - 0.5);
+}
+
 function createDeck() {
   const deck = [];
 
   // MONEY
-  [1,1,1,1,2,2,2,3,3,4,5].forEach(v =>
+  [1,1,1,1,1,1,2,2,2,2,2,3,3,3,4,4,4,5,5,10].forEach(v =>
     deck.push({ type: "money", value: v })
   );
 
   // PROPERTIES (color sets)
-  const colors = ["Red", "Blue", "Green", "Yellow", "Orange"];
-  colors.forEach(color => {
-    for (let i = 0; i < 6; i++) {
-      deck.push({ type: "property", color });
+  const cards = [	// All types of cards
+	  {setAmount:2, color:"Brown", 		value:1},
+	  {setAmount:3, color:"Light Blue", value:1}, 
+	  {setAmount:3, color:"Pink", 		value:2}, 
+	  {setAmount:3, color:"Orange", 	value:2}, 
+	  {setAmount:3, color:"Red", 		value:3}, 
+	  {setAmount:3, color:"Yellow", 	value:3}, 
+	  {setAmount:3, color:"Green", 		value:4}, 
+	  {setAmount:2, color:"Dark Blue", 	value:4}, 
+	  {setAmount:4, color:"Black", 		value:2},	// Railroads
+	  {setAmount:2, color:"White", 		value:2}	// Utilities
+  ];
+  
+  cards.forEach(card => {	// Add cards to deck with type:"property"
+    for (let i = 0; i < card.setAmount; i++) {
+      deck.push(card);
+	  deck[deck.length-1].type = "property";
     }
   });
 
   // ACTIONS (simplified Monopoly Deal feel)
-  for (let i = 0; i < 6; i++) deck.push({ type: "action", name: "Rent" });
+  for (let i = 0; i < 13; i++) deck.push({ type: "action", name: "Rent" });
   for (let i = 0; i < 4; i++) deck.push({ type: "action", name: "Steal" });
-  for (let i = 0; i < 4; i++) deck.push({ type: "action", name: "DealBreaker" });
+  for (let i = 0; i < 2; i++) deck.push({ type: "action", name: "DealBreaker" });
 
-  return deck.sort(() => Math.random() - 0.5);
+  return shuffleDeck(deck);
 }
 
 function initPlayer() {
@@ -67,17 +103,18 @@ function initPlayer() {
 }
 
 function draw(room, id) {
-  if (room.deck.length === 0) return;
+  if (room.deck.length === 0) resetDeck(room.deck, room.discard);
   room.players[id].hand.push(room.deck.pop());
 }
 
 function nextTurn(room) {
-  room.turnIndex = (room.turnIndex + 1) % room.turnOrder.length;
+  room.turnIndex = (room.turnIndex + 1) % room.turnOrder.length;	// Update Turn index (for next player's turn)
 
-  const next = room.turnOrder[room.turnIndex];
-  room.players[next].actionsLeft = 3;
+  const next = room.turnOrder[room.turnIndex];	// id of next player
+  room.players[next].actionsLeft = 3;	// Reset action count of next player
 
-  draw(room, next);
+  draw(room, next);	// next player draws 1st card
+  draw(room, next);	// next player draws 2nd card
 }
 
 // ---------- SOCKET ----------
@@ -88,6 +125,7 @@ io.on("connection", (socket) => {
 
     rooms[code] = {
       deck: createDeck(),
+	  discard: [],
       players: {},
       turnOrder: [],
       turnIndex: 0
@@ -96,7 +134,7 @@ io.on("connection", (socket) => {
     rooms[code].players[socket.id] = initPlayer();
     rooms[code].turnOrder.push(socket.id);
 
-    for (let i = 0; i < 5; i++) draw(rooms[code], socket.id);
+    for (let i = 0; i < 5; i++) draw(rooms[code], socket.id);	// Draw 5 at start of game
 
     socket.join(code);
     cb(code);
@@ -104,7 +142,7 @@ io.on("connection", (socket) => {
     io.to(code).emit("state", rooms[code]);
   });
 
-  socket.on("joinRoom", (code, cb) => {
+  socket.on("joinRoom", (code, cb) => {	// When join someone joins a room
     const room = rooms[code];
     if (!room) return cb({ error: "Room not found" });
 
@@ -119,7 +157,7 @@ io.on("connection", (socket) => {
     io.to(code).emit("state", getPublicState(room));
   });
 
-  socket.on("playCard", ({ code, index, targetId }) => {
+  socket.on("playCard", ({ code, index, targetId }) => {	// When card "played" (clicked, whether or not it's your turn)
     const room = rooms[code];
     const player = room.players[socket.id];
 
